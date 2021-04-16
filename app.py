@@ -54,7 +54,7 @@ def questions_page(q):
     """Display the current question"""
     responses = session.get(RES_KEY)
 
-    if(responses is None):
+    if(responses == 0 and q > 0):
         #accessing questions page before selecting survey
         return redirect("/")
 
