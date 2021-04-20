@@ -1,5 +1,5 @@
-from flask import Flask, request, render_template, redirect, flash, session
-from surveys import satisfaction_survey as survey
+from flask import Flask, request, render_template, redirect, flash, session, make_response
+from surveys import surveys
 from flask_debugtoolbar import DebugToolbarExtension
 
 
@@ -9,14 +9,29 @@ app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 debug = DebugToolbarExtension(app)
 
-
+CURRENT_SURVEY_KEY = "curr_survey"
 RES_KEY = "responses"
 
 
 @app.route('/')
-def index():
+def survey_choice():
     """Selecting a survey"""
 
+    return render_template("choice.html", surveys=surveys)
+
+
+@app.route('/', methods=["POST"])
+def chosen_survey():
+
+    survey_id = request.form['survey_code']
+
+    #cannot take survey again until cookies times out
+    if request.cookies.get(f"completed_{survey_id}"):
+        return render_template("already-done.html")
+
+    survey = surveys[survey_id]
+    session[CURRENT_SURVEY_KEY] = survey_id
+    
     return render_template("index.html", survey=survey)
 
 
@@ -35,11 +50,16 @@ def handle_q():
 
     #get response choice
     choice = request.form['answer']
+    text = request.form.get("text", "")
 
-    #include response to session
+    #append responses to the list in the session
     res = session[RES_KEY]
-    res.append(choice)
+    res.append({"choice": choice, "text": text})
+
+    #append response to the session
     session[RES_KEY] = res
+    survey_code = session[CURRENT_SURVEY_KEY]
+    survey = surveys[survey_code]
     
     if(len(res) == len(survey.questions)):
         #finished survey, answered all the questions -- need to thank
@@ -53,8 +73,10 @@ def handle_q():
 def questions_page(q):
     """Display the current question"""
     responses = session.get(RES_KEY)
+    survey_code = session[CURRENT_SURVEY_KEY]
+    survey = surveys[survey_code]
 
-    if(responses == 0 and q > 0):
+    if(responses is None):
         #accessing questions page before selecting survey
         return redirect("/")
 
@@ -74,6 +96,16 @@ def questions_page(q):
 
 @app.route("/complete")
 def finished():
-    """Finished survey. Show "thank you" message"""
+    """Finished survey. Show "thank you" message with a list of the responses from survey"""
 
-    return render_template("completion.html")
+    survey_id = session[CURRENT_SURVEY_KEY]
+    survey = surveys[survey_id]
+    res = session[RES_KEY]
+
+    html = render_template("completion.html", survey=survey, res=res)
+
+    #set the cookie so that survey is completed thus cannot be completed again
+
+    res = make_response(html)
+    res.set_cookie(f"completed_{survey_id}", "yes", max_age=60)
+    return res

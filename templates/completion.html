@@ -2,5 +2,14 @@
 {% block content %}
 <h1>Survey Complete!</h1>
 <p>Thank you for completing the survey! We hold your feedback very valuable!</p>
-
+<p>We recorded the following responses form your submission:</p>
+<ul>
+    {% for question in survey.questions %}
+    <li>
+      <b>{{ question.question }}:</b>
+      {{ res[loop.index0]["choice"] }}
+      <i>{{ res[loop.index0]["text"] }}</i>
+    </li>
+    {% endfor %}
+  </ul>
 {% endblock %}
