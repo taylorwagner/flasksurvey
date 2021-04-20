@@ -27,7 +27,7 @@ def chosen_survey():
 
     #cannot take survey again until cookies times out
     if request.cookies.get(f"completed_{survey_id}"):
-        return render_template("already-done.html")
+        return render_template("done.html")
 
     survey = surveys[survey_id]
     session[CURRENT_SURVEY_KEY] = survey_id
